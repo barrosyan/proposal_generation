@@ -21,7 +21,6 @@ def connect_to_sheets():
     with open(os.environ["GOOGLE_CREDS"], 'r') as f:
         creds_dict = json.loads(f.read())
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-    credentials = ServiceAccountCredentials.from_json_keyfile_dict(creds, scope)
     client = gspread.authorize(creds)
     return client
 
