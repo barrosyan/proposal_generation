@@ -17,7 +17,8 @@ model = genai.GenerativeModel("gemini-1.5-flash")
 
 # ========== CONFIGURAÇÃO GOOGLE SHEETS ==========
 def connect_to_sheets():
-    creds_dict = json.loads(os.environ["GOOGLE_CREDS"])
+    creds_json = os.environ.get("GOOGLE_CREDS")
+    creds_dict = json.loads(creds_json)
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
     credentials = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
