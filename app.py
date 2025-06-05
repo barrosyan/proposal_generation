@@ -32,8 +32,7 @@ def connect_to_sheets():
         }
 
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    creds_dict = json.loads(CREDENTIALS)
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(CREDENTIALS, scope)
     client = gspread.authorize(creds)
     return client
 
