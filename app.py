@@ -2,6 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+from datetime import datetime
 
 # ========== CONFIGURAÇÃO STREAMLIT ==========
 st.set_page_config(page_title="ELM Proposal Generator", layout="centered")
@@ -17,11 +18,14 @@ def connect_to_sheets():
     client = gspread.authorize(creds)
     return client
 
-def save_to_sheet(problem, currency, language, proposal):
+def save_to_sheet(name, email, company, role, problem, currency, language, proposal):
     client = connect_to_sheets()
     sheet = client.open("EnterpriseLM_Proposals").sheet1
-    sheet.append_row([problem, currency, language, proposal])
-
+    sheet.append_row([
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        name, email, company, role,
+        problem, currency, language, proposal
+    ])
 
 # ========== TEXTO INICIAL EXPLICATIVO ==========
 st.title("🤖 ELM Proposal Generator (Beta)")
@@ -48,17 +52,25 @@ We build:
 # ========== FORMULÁRIO ==========
 st.header("📥 Provide Your Problem Details")
 
-problem = st.text_area("1. Technical Problem Description", placeholder="Describe the problem you'd like us to help with...")
-currency = st.selectbox("2. Desired Proposal Currency", ["BRL (R$)", "USD ($)", "EUR (€)", "GBP (£)"])
-language = st.selectbox("3. Proposal Language", ["English", "Portuguese", "Spanish", "Italian"])
+name = st.text_input("1. Your Full Name")
+email = st.text_input("2. Email Address")
+company = st.text_input("3. Company Name")
+role = st.text_input("4. Your Role / Title")
+
+problem = st.text_area("5. Technical Problem Description", placeholder="Describe the problem you'd like us to help with...")
+currency = st.selectbox("6. Desired Proposal Currency", ["BRL (R$)", "USD ($)", "EUR (€)", "GBP (£)"])
+language = st.selectbox("7. Proposal Language", ["English", "Portuguese", "Spanish", "Italian"])
 
 submit = st.button("🚀 Generate Proposal")
 
 # ========== GERAÇÃO DA PROPOSTA ==========
-if submit and problem.strip():
-    with st.spinner("Generating proposal with Gemini..."):
+if submit:
+    if not (name and email and problem):
+        st.warning("⚠️ Please fill in at least your name, email and problem description.")
+    else:
+        with st.spinner("Generating proposal with Gemini..."):
 
-        prompt = f"""
+            prompt = f"""
 You are a proposal assistant for a scientific AI consulting firm.
 
 Your goal is to create a detailed project proposal based on the user's problem description.
@@ -90,17 +102,17 @@ Problem:
 Currency: {currency}
 """
 
-        response = model.generate_content(prompt)
-        proposal_text = response.text.strip()
+            response = model.generate_content(prompt)
+            proposal_text = response.text.strip()
 
-        # Salvar no Google Sheets
-        save_to_sheet(problem, currency, language, proposal_text)
+            # Salvar tudo no Google Sheets
+            save_to_sheet(name, email, company, role, problem, currency, language, proposal_text)
 
-        # Exibir resultado
-        st.success("✅ Proposal Generated Successfully!")
-        st.markdown("---")
-        st.subheader("📄 Proposal")
-        st.markdown(proposal_text)
+            # Exibir resultado
+            st.success("✅ Proposal Generated Successfully!")
+            st.markdown("---")
+            st.subheader("📄 Proposal")
+            st.markdown(proposal_text)
 
 # ========== RODAPÉ ==========
 st.markdown("""
