@@ -20,8 +20,14 @@ model = genai.GenerativeModel("gemini-1.5-flash")
 def connect_to_sheets():
     creds_json = st.secrets["GOOGLE_CREDS"]
     creds_dict = json.loads(creds_json)
-    credentials = service_account.Credentials.from_service_account_info(creds_dict)
-
+    scopes = ["https://www.googleapis.com/auth/spreadsheets",
+              "https://www.googleapis.com/auth/drive.file"]
+    
+    credentials = service_account.Credentials.from_service_account_info(
+        creds_dict,
+        scopes=scopes
+    )
+    
     return gspread.authorize(credentials)
     
 def save_to_sheet(name, email, company, role, problem, currency, language, proposal):
