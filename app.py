@@ -3,18 +3,22 @@ import google.generativeai as genai
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
+import os
+from dotenv import load_dotenv
+load_dotenv('.env')
 
 # ========== CONFIGURAÇÃO STREAMLIT ==========
 st.set_page_config(page_title="ELM Proposal Generator", layout="centered")
 
 # ========== CONFIGURAÇÃO GEMINI ==========
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+genai.configure(api_key=os.environ.get["GEMINI_API_KEY"])
 model = genai.GenerativeModel("gemini-pro")
 
 # ========== CONFIGURAÇÃO GOOGLE SHEETS ==========
 def connect_to_sheets():
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    creds = ServiceAccountCredentials.from_json_keyfile_name('creds.json', scope)
+    creds_path = os.path.join(os.getcwd(), 'creds.json')
+    creds = ServiceAccountCredentials.from_json_keyfile_name(creds_path, scope)
     client = gspread.authorize(creds)
     return client
 
