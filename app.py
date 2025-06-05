@@ -11,7 +11,7 @@ load_dotenv('.env')
 st.set_page_config(page_title="ELM Proposal Generator", layout="centered")
 
 # ========== CONFIGURAÇÃO GEMINI ==========
-genai.configure(api_key=os.environ.get["GEMINI_API_KEY"])
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 model = genai.GenerativeModel("gemini-pro")
 
 # ========== CONFIGURAÇÃO GOOGLE SHEETS ==========
