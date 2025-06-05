@@ -17,26 +17,11 @@ model = genai.GenerativeModel("gemini-1.5-flash")
 
 # ========== CONFIGURAÇÃO GOOGLE SHEETS ==========
 def connect_to_sheets():
-    CREDENTIALS = {
-          "type": "service_account",
-          "project_id": "flask-appi",
-          "private_key_id": "166d8a063d10b55b503f6d35cfc2956f9ab7a206",
-          "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDDJ31Vk4v0p60N\nxrxd0Ehrl5e/9n6voiWnQStou+/8e/iNrV7PPqlNDBvb1x4npd0SmYNQBzHM9iNO\nZBwC7PonY2hqzDRMk6qR5qZimMd2/yN27q9CtDefDy6gEaya760SgTWe2znbPcxC\n4huzV72A+fFc8KGsIRO8kemcTJMv4I0wfg4X2fDLPsLzZBGXIc8kkjMs/oipuZD+\nZsxx+TNSQ9XhbtU2s6TYeC2cuBgyA5fXrWKd5aTwCxLXg4AMEz5ZY47pMtjNAp+p\nsn5Vt712DWUXalqwEL9BfeEo7leSOQTMzW8ZYTCyy+5o1X7jHKW2PJ9USErkFM7L\nJJ2GgQQXAgMBAAECggEACdIY6o+MQXmWqdTQceAjZNayGkTrRydfwbTz3Edo4knS\nzj5lQQSkPG5ZkIyYxeIA6Ai1pPdXuDrCuBUtm7AVPpowDP/NufTMZp82zEtn7kMU\no82LIE41Zlm7PO7mwr1A9mduLVpW5QONHeiHAFVwAeeSD91EJYdcmOa23Ni1p3kM\nzCHbrP7mXqKfDmPxMHe7YGNbmYrFRgjN3jZOdAcc2u968XPuFmSO5xtjcyxgSwfN\nxfRe5w7nmIyI67h1hGuQhElXwDEF1sv1shAugpTupjCaFWPa0TlcTFA7tzEe54qO\nTMp4YNqE5GIhpPH9qhWozYIb+sEbMMsKY7sImHlAEQKBgQD0QyhQY9yx097ieVbZ\nWifsVBnBnN2/Wc5BwX4QhiEE2vemuDhxyUzqxHE+gbj1GbZHtCe3xUzfZeC36TcY\n7qBNmgT7GaUUf0VAe243bmdxKZHvIhAL2phe0jpHLcqIRbLzQHhhSWldV5cZdMUn\nhmr7S08MRJpGAE6ju6AlxzpClQKBgQDMiDgaoQEtJi6IX7zVx9lzpi/KI21qFYpx\nn6G8NLA3ADK7vbb3qW5jeif1RYwkOksTxFhsow1PcLHs/0SzHfxqUQAvZysu+K5G\nVvNZeUmuoyrd+T0bDafDgbJx0SidaegyM1EVAZO2QVss5ODJ7W92UdzZAo4K878X\nIRrgHEfM+wKBgHc51JKwu8edCBz5Zzf+dqA3SL8lh2NgPXoBLTx5i+Jn0xvwrbR0\nsnOhYTlGbnZMj5meSQi9aFFe0/pQ/pDP4TUfqbC7CsXffXkFBn5OCHXG+bGEqdpv\nX5JhAQs/Qa2Uf82WOWwbPi/OkjVdtuIdDVkNoE73qWnjun7XFUt7XGelAoGBAILx\n+ylhRwWG2mfJE3ay2k8maJY7lENEwzv3fW6nNOIhqFl2Hnv0542cmZR4ED7pa0Oe\ngxYaVd00Q1V+IJekbQQME9hFbupFoB28cVQpSLkcEcfHWA3H8k5C7OHdjOkq8tOg\n8xpFxjH7KcpWRmxBLQlNY90zu4jbgM3oDfLJaFadAoGBANN97lOEInWrGef5k5e1\nVuslVd94Rf8TozkV2Cdmm1A0myRJevyPrFIfFZhJD6K1xQd4etZn20zx5Cafe8cA\nAgFEAXW6EZZUhSufiOSl3/qjPosQuSxo11fJkMa4qdMPSndvz5FNl+SvnY6NlvGY\ny7jzy1IkBBZ2YoXcWLHienMM\n-----END PRIVATE KEY-----\n",
-          "client_email": "automatize@flask-appi.iam.gserviceaccount.com",
-          "client_id": "109404454649977700430",
-          "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-          "token_uri": "https://oauth2.googleapis.com/token",
-          "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-          "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/automatize%40flask-appi.iam.gserviceaccount.com",
-          "universe_domain": "googleapis.com"
-        }
-
-
-    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(CREDENTIALS, scope)
-    client = gspread.authorize(creds)
-    return client
-
+    creds_json = json.loads(os.environ["GOOGLE_CREDS"])
+    scope = ['https://spreadsheets.google.com/feeds','https://www.googleapis.com/auth/drive']
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, scope)
+    return gspread.authorize(creds)
+    
 def save_to_sheet(name, email, company, role, problem, currency, language, proposal):
     client = connect_to_sheets()
     sheet = client.open("EnterpriseLM_Proposals").sheet1
