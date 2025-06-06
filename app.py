@@ -1,35 +1,28 @@
+import os
 import json
-import streamlit as st
+from flask import Flask, request, jsonify, render_template_string
+from datetime import datetime
 import google.generativeai as genai
 import gspread
-from google.oauth2 import service_account
-from oauth2client.service_account import ServiceAccountCredentials
-from datetime import datetime
-import os
+from google.oauth2.service_account import Credentials
 from dotenv import load_dotenv
+
+# Load .env
 load_dotenv('.env')
 
-# ========== CONFIGURAÇÃO STREAMLIT ==========
-st.set_page_config(page_title="ELM Proposal Generator", layout="centered")
+app = Flask(__name__)
 
-# ========== CONFIGURAÇÃO GEMINI ==========
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+# === CONFIGURAR GEMINI ===
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel("gemini-1.5-flash")
 
-# ========== CONFIGURAÇÃO GOOGLE SHEETS ==========
+# === CONFIGURAR GOOGLE SHEETS ===
 def connect_to_sheets():
-    creds_json = st.secrets["GOOGLE_CREDS"]
-    creds_dict = json.loads(creds_json)
-    scopes = ["https://www.googleapis.com/auth/spreadsheets",
-              "https://www.googleapis.com/auth/drive.file"]
-    
-    credentials = service_account.Credentials.from_service_account_info(
-        creds_dict,
-        scopes=scopes
-    )
-    
+    creds_dict = json.loads(os.getenv("GOOGLE_CREDS"))
+    scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive.file"]
+    credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
     return gspread.authorize(credentials)
-    
+
 def save_to_sheet(name, email, company, role, problem, currency, language, proposal):
     client = connect_to_sheets()
     sheet = client.open("EnterpriseLM_Proposals").sheet1
@@ -39,50 +32,85 @@ def save_to_sheet(name, email, company, role, problem, currency, language, propo
         problem, currency, language, proposal
     ])
 
-# ========== TEXTO INICIAL EXPLICATIVO ==========
-st.title("🤖 ELM Proposal Generator (Beta)")
-st.markdown("""
-Welcome to the **Enterprise Learning Machines Proposal Generator**.
+# === FRONTEND HTML ===
+HTML_PAGE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ELM Proposal Generator</title>
+    <style>
+        body { font-family: Arial; background: #f4f4f4; padding: 20px; }
+        #form { background: white; padding: 20px; border-radius: 10px; width: 500px; margin: auto; }
+        input, textarea, select, button { width: 100%; margin-top: 10px; padding: 10px; }
+        #output { margin-top: 30px; white-space: pre-wrap; background: #eef; padding: 15px; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div id="form">
+        <h2>🤖 ELM Proposal Generator (Beta)</h2>
+        <input id="name" placeholder="Full Name">
+        <input id="email" placeholder="Email">
+        <input id="company" placeholder="Company">
+        <input id="role" placeholder="Your Role">
+        <textarea id="problem" placeholder="Describe your technical problem..."></textarea>
+        <select id="currency">
+            <option>BRL (R$)</option>
+            <option>USD ($)</option>
+            <option>EUR (€)</option>
+            <option>GBP (£)</option>
+        </select>
+        <select id="language">
+            <option>English</option>
+            <option>Portuguese</option>
+            <option>Spanish</option>
+            <option>Italian</option>
+        </select>
+        <button onclick="send()">🚀 Generate Proposal</button>
+        <div id="output"></div>
+    </div>
+    <script>
+        async function send() {
+            const data = {
+                name: document.getElementById("name").value,
+                email: document.getElementById("email").value,
+                company: document.getElementById("company").value,
+                role: document.getElementById("role").value,
+                problem: document.getElementById("problem").value,
+                currency: document.getElementById("currency").value,
+                language: document.getElementById("language").value,
+            };
+            const res = await fetch("/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            });
+            const result = await res.json();
+            document.getElementById("output").innerText = result.proposal || result.error;
+        }
+    </script>
+</body>
+</html>
+"""
 
-We're a small but highly specialized AI & Science team.  
-To streamline our client intake process, this test version automatically generates a first-draft technical proposal from your problem description.
+@app.route("/")
+def home():
+    return render_template_string(HTML_PAGE)
 
-🔧 **Please note:** This is a **beta version**. Every submission will be reviewed manually before we contact you.
+@app.route("/generate", methods=["POST"])
+def generate():
+    data = request.json
+    name = data.get("name")
+    email = data.get("email")
+    company = data.get("company", "")
+    role = data.get("role", "")
+    problem = data.get("problem", "")
+    currency = data.get("currency", "USD ($)")
+    language = data.get("language", "English")
 
----
-
-### 🧠 About Enterprise Learning Machines
-We specialize in **Physics-Informed Machine Learning**, **Computer Vision**, and **AI Agents** for science and engineering problems.
-
-We build:
-- PINN pipelines and surrogates
-- Scientific research automation
-- AI agents with reasoning for complex tasks
-- Geospatial ML solutions
-""")
-
-# ========== FORMULÁRIO ==========
-st.header("📥 Provide Your Problem Details")
-
-name = st.text_input("1. Your Full Name")
-email = st.text_input("2. Email Address")
-company = st.text_input("3. Company Name")
-role = st.text_input("4. Your Role / Title")
-
-problem = st.text_area("5. Technical Problem Description", placeholder="Describe the problem you'd like us to help with...")
-currency = st.selectbox("6. Desired Proposal Currency", ["BRL (R$)", "USD ($)", "EUR (€)", "GBP (£)"])
-language = st.selectbox("7. Proposal Language", ["English", "Portuguese", "Spanish", "Italian"])
-
-submit = st.button("🚀 Generate Proposal")
-
-# ========== GERAÇÃO DA PROPOSTA ==========
-if submit:
     if not (name and email and problem):
-        st.warning("⚠️ Please fill in at least your name, email and problem description.")
-    else:
-        with st.spinner("Generating proposal with Gemini..."):
+        return jsonify({"error": "Please provide at least name, email, and problem."}), 400
 
-            prompt = f"""
+    prompt = f"""
 You are a proposal assistant for a scientific AI consulting firm.
 
 Your goal is to create a detailed project proposal based on the user's problem description.
@@ -114,21 +142,13 @@ Problem:
 Currency: {currency}
 """
 
-            response = model.generate_content(prompt)
-            proposal_text = response.text.strip()
+    try:
+        response = model.generate_content(prompt)
+        proposal_text = response.text.strip()
+        save_to_sheet(name, email, company, role, problem, currency, language, proposal_text)
+        return jsonify({"proposal": proposal_text})
+    except Exception as e:
+        return jsonify({"error": f"Failed to generate proposal: {str(e)}"}), 500
 
-            # Salvar tudo no Google Sheets
-            save_to_sheet(name, email, company, role, problem, currency, language, proposal_text)
-
-            # Exibir resultado
-            st.success("✅ Proposal Generated Successfully!")
-            st.markdown("---")
-            st.subheader("📄 Proposal")
-            st.markdown(proposal_text)
-
-# ========== RODAPÉ ==========
-st.markdown("""
----
-📬 **Contact Us:** enterpriselearningmachines@gmail.com  
-🌐 [Landing Page](https://enterpriselm.github.io/home)
-""")
+if __name__ == "__main__":
+    app.run(debug=True)
